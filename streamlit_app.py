@@ -132,6 +132,10 @@ scatter = alt.Chart(filtered_df).mark_circle(size=60, opacity=0.6).encode(
     color=alt.Color("State:N"),
     tooltip=["CD_Num", "State", demo_col, "Partisan Margin"]
 ).add_selection(brush).properties(width=600, height=400)
+rule = alt.Chart(pd.DataFrame({'x': [50]})).mark_rule(strokeDash=[2, 2], color='red').encode(x='x:Q')
+
+# Combine the scatterplot and rule
+scatter = scatter + rule
 
 # Vote Composition Chart
 party_df = df[df["State"].isin(selected_states)].groupby("State")[["E_16-20_COMP_Dem", "E_16-20_COMP_Rep", "E_16-20_COMP_Total"]].sum()
@@ -148,13 +152,39 @@ stacked_chart = alt.Chart(stacked_data).mark_bar().encode(
     tooltip=["State", "Party", "Percentage"]
 ).properties(width=600, height=400)
 
+# Annotate the chart with percentages
+democratic_annotations = alt.Chart(stacked_data[stacked_data['Party'] == 'Democratic %']).mark_text(
+    color='white',
+    dx=-600
+).encode(
+    y=alt.Y("State:N", sort="-x"),
+    x=alt.X("Percentage:Q", stack="normalize"),
+    text=alt.Text('Percentage:Q', format=".1f")
+)
+
+republican_annotations = alt.Chart(stacked_data[stacked_data['Party'] == 'Republican %']).mark_text(
+    color='white',
+    dx=-15
+).encode(
+    y=alt.Y("State:N", sort="-x"),
+    x=alt.X("Percentage:Q", stack="normalize"),
+    text=alt.Text('Percentage:Q', format=".1f")
+)
+
+# Combine the chart and annotations
+stacked_chart = stacked_chart + democratic_annotations + republican_annotations
+
+
+
 # Summary Statistics
 summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index()
+summary_df = summary_df.round(2)
 
 # KPI Cards
-avg_margin = filtered_df["Partisan Margin"].mean()
-avg_minority = filtered_df["Minority Percentage"].mean()
+avg_margin = round(filtered_df["Partisan Margin"].mean(), 2)
+avg_minority = round(filtered_df["Minority Percentage"].mean(), 2)
 num_districts = len(filtered_df)
+
 
 # Display Layout
 col1, col2, col3 = st.columns(3)
