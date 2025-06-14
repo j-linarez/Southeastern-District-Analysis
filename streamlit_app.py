@@ -18,6 +18,7 @@ d) At least two coordinated visualizations (e.g., selection in one affects the o
 import streamlit as st
 import pandas as pd
 import altair as alt
+import random as rd
 # Set the page to a wide layout for better visualization
 
 @st.cache_data
