@@ -1,26 +1,9 @@
-'''
-Dashboard for Southeastern US Districts
-
-1) be user-friendly interface 
-2) enables others to explore the data. 
-3) use effective visual mappings with interactivity
-4) offering users to engage with your data in meaningful ways.
-
-Your dashboard should include:
-
-a) At least one UI interaction (e.g., dropdown, slider, checkbox)
-b) At least one within-visualization interaction (e.g., clicking, brushing)
-c) Tooltip functionality for exploring data values
-d) At least two coordinated visualizations (e.g., selection in one affects the other)
-
-'''
-
 import streamlit as st
 import pandas as pd
 import altair as alt
 import random as rd
-# Set the page to a wide layout for better visualization
 
+# Set the page to a wide layout for better visualization
 @st.cache_data
 def load_data():
     df = pd.read_csv("https://raw.githubusercontent.com/j-linarez/DataVizProject/refs/heads/main/Southeast%20Region%20Congressional%20Districts.csv")
@@ -55,10 +38,34 @@ state_groups = {
     ]
 }
 
+# Evaluation group explanations
+evaluation_contexts = {
+    "All States": """This includes all congressional districts in the Southeastern U.S. This is the default view of all the charts provided""",
+    "Independent Commission": """These states (Louisiana, Virginia) use independent or court ordered commissions for redistricting. They are intended to reduce political intervention.""",
+    "Republican Legislatures": """These states allow their legislatures to draw congressional maps. In all these states, Republicans often do not have to worry about potential concerns of partisan fairness / minority representation.""",
+    "Competitive States": """Georgia, North Carolina, and Virginia are considered politically competitive (within 10 percent of winning margin). However, many of these states after controlled by the Republican party.""",
+    "Conservative States": """These states consistently vote Republican. They often do not vote for the Democratic party. Despite this, a sizable amount of minority voters often live in these states."""
+}
+
+# Demographic focus descriptions
+demo_contexts = {
+    "Total Minority": "This combines all non-white racial/ethnic groups. It accounts all groups of ethnic groups.",
+    "Black": "The Black population plays a significant role in many Southern states' Democratic voting base. They are commonly found in rural / urban areas impacted by the history of racial segeration.",
+    "Hispanic": "Though growing, Hispanic populations are not evenly distributed in the Southeast. They are most prevalent in Florida.",
+    "Asian": "Smaller in proportion but growing in urban centers, Asian populations are more likely to be found in the Atlanta metro.",
+    "Native": "Native American populations are extremely small in the Southeast.",
+    "Pacific": "Pacific Islander populations are extremely small in the Southeast."
+}
+
 # Load data and set page config
 df = load_data()
 st.set_page_config(layout="wide")
 st.title("Southeast U.S. Congressional Voting & Demographics Dashboard")
+
+# Introduction
+st.markdown("### Introduction")
+st.write("This dashboard provides an interactive exploration of the relationship between partisan voting margins and minority demographics in congressional districts across the Southeastern United States. As a user, you are free to explore what the dashboard offers. " \
+"If you are confused with terminology, descriptions have been placed for your convience. The partisan voting margin is determined by a left - right scale where negative values indicate a Democratic lead and positive values are a Republican lead")
 
 # UI Controls
 st.markdown("### Filters")
@@ -87,6 +94,13 @@ with colC:
     selected_demo = st.selectbox("Demographic Focus", [
         "Total Minority", "Hispanic", "Black", "Asian", "Native", "Pacific"
     ])
+
+# Context Sections
+st.markdown("### Context")
+st.write("**State Group:**")
+st.info(evaluation_contexts[state_group])
+st.write("**Demographic Focus:**")
+st.write(demo_contexts[selected_demo])
 
 # Data Filtering Logic
 filtered_df = df[df["State"].isin(selected_states)]
@@ -174,8 +188,6 @@ republican_annotations = alt.Chart(stacked_data[stacked_data['Party'] == 'Republ
 # Combine the chart and annotations
 stacked_chart = stacked_chart + democratic_annotations + republican_annotations
 
-
-
 # Summary Statistics
 summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index()
 summary_df = summary_df.round(2)
@@ -185,8 +197,8 @@ avg_margin = round(filtered_df["Partisan Margin"].mean(), 2)
 avg_minority = round(filtered_df["Minority Percentage"].mean(), 2)
 num_districts = len(filtered_df)
 
-
 # Display Layout
+st.markdown("### Key Metrics")
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("Average Vote Margin", avg_margin)
@@ -195,12 +207,19 @@ with col2:
 with col3:
     st.metric("Number of Districts", num_districts)
 
+st.markdown("### Visualizations")
 col1, col2 = st.columns(2)
 with col1:
+    st.markdown("#### Partisan Margin by State")
+    st.write('A boxplot showing the distribution of partisan vote margins across selected states. Each point represents a congressional district. Hover to inspect more details')
     st.altair_chart(combined_margin, use_container_width=True)
+    st.markdown("#### Party Vote Composition by State")
+    st.write("A bar chart displaying the average party composition across selected states.")
     st.altair_chart(stacked_chart, use_container_width=True)
 with col2:
+    st.markdown("#### Minority Share vs Partisan Margin")
+    st.write("A scatterplot comparing the percentage of minorities living in a given district versus the partisan margin.")
     st.altair_chart(scatter, use_container_width=True)
 
-st.write("### Summary Statistics")
+st.markdown("### Summary Statistics")
 st.write(summary_df)
