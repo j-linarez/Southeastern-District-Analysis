@@ -111,8 +111,18 @@ if selected_group != "All":
 demo_col = "Minority Percentage" if selected_demo == "Total Minority" else f"{selected_demo} %"
 
 # -- Color palette --
+
+safe_colors = [
+    "#E69F00", "#56B4E9", "#009E73", "#F0E442",
+    "#0072B2", "#D55E00", "#CC79A7", "#999999"
+]
 unique_states = sorted(filtered_df["State"].unique())
-palette = alt.Scale(domain=unique_states, scheme="category20")
+safe_12_colors = [
+    "#E69F00", "#56B4E9", "#009E73", "#F0E442",
+    "#0072B2", "#D55E00", "#CC79A7", "#999999",
+    "#117733", "#88CCEE", "#DDCC77", "#AA4499"
+]
+palette = alt.Scale(domain=unique_states, range=safe_12_colors[:len(unique_states)])
 color = alt.Color("State:N", scale=palette)
 
 # -- Charts --
@@ -131,10 +141,15 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown("#### Partisan Margin by State")
     st.caption("A boxplot with overlaid points showing vote margins by congressional district.")
-    box = alt.Chart(filtered_df).mark_boxplot(extent="min-max").encode(
-        x=alt.X("State:N"),
-        y=alt.Y("Partisan Margin:Q"),
-        color=alt.value("lightgray")
+    
+    
+    box = alt.Chart(filtered_df).mark_boxplot(
+    extent="min-max",
+    size=30,
+    color="lightgray"
+    ).encode(
+    x=alt.X("State:N"),
+    y=alt.Y("Partisan Margin:Q", format=".2f")
     )
     points = alt.Chart(filtered_df).mark_circle(size=60, opacity=0.5).encode(
         x="State:N",
@@ -145,21 +160,33 @@ with col1:
     st.altair_chart(box + points, use_container_width=True)
 
     st.markdown("#### Party Vote Composition by State")
-    st.caption("Shows average vote share across selected states.")
-    vote_df = df[df["State"].isin(selected_states)].groupby("State")[
-        ["E_16-20_COMP_Dem", "E_16-20_COMP_Rep", "E_16-20_COMP_Total"]
-    ].sum()
-    vote_df["Democratic %"] = (vote_df["E_16-20_COMP_Dem"] / vote_df["E_16-20_COMP_Total"]) * 100
-    vote_df["Republican %"] = (vote_df["E_16-20_COMP_Rep"] / vote_df["E_16-20_COMP_Total"]) * 100
-    vote_df["Other %"] = 100 - vote_df["Democratic %"] - vote_df["Republican %"]
-    stacked = vote_df.reset_index().melt(id_vars="State", var_name="Party", value_name="Percentage")
-    bar = alt.Chart(stacked).mark_bar().encode(
-        y=alt.Y("State:N", sort="-x"),
-        x=alt.X("Percentage:Q", stack="normalize"),
-        color=alt.Color("Party:N", scale=alt.Scale(domain=["Democratic %", "Republican %", "Other %"],
-                                                   range=["#00AEF3", "#E81B23", "#808080"])),
-        tooltip=["State", "Party", alt.Tooltip("Percentage:Q", format=".1f")]
+    st.caption("This chart displays the average party vote share per state, based on composite data from 2016–2020 elections.")
+
+    # Clean and filter the data
+    vote_df = df[df["State"].isin(selected_states)].copy()
+    vote_df = vote_df[vote_df["E_16-20_COMP_Total"] > 0]
+
+    # Aggregate by state
+    vote_grouped = vote_df.groupby("State")[["E_16-20_COMP_Dem", "E_16-20_COMP_Rep", "E_16-20_COMP_Total"]].sum().reset_index()
+
+    vote_grouped["Democratic %"] = (vote_grouped["E_16-20_COMP_Dem"] / vote_grouped["E_16-20_COMP_Total"]) * 100
+    vote_grouped["Republican %"] = (vote_grouped["E_16-20_COMP_Rep"] / vote_grouped["E_16-20_COMP_Total"]) * 100
+    vote_grouped["Other %"] = 100 - vote_grouped["Democratic %"] - vote_grouped["Republican %"]
+
+    vote_long = vote_grouped[["State", "Democratic %", "Republican %", "Other %"]].melt(
+        id_vars="State", var_name="Party", value_name="Percentage"
     )
+
+    bar = alt.Chart(vote_long).mark_bar().encode(
+        y=alt.Y("State:N", sort="-x"),
+        x=alt.X("Percentage:Q", stack="normalize", title="Vote Share"),
+        color=alt.Color("Party:N", scale=alt.Scale(
+            domain=["Democratic %", "Republican %", "Other %"],
+            range=["#00AEF3", "#E81B23", "#808080"]
+        )),
+        tooltip=["State", "Party", alt.Tooltip("Percentage:Q", format=".1f")]
+    ).properties(width=600, height=400)
+    
     st.altair_chart(bar, use_container_width=True)
 
 with col2:
@@ -167,16 +194,17 @@ with col2:
     st.caption("Explores how minority presence relates to party advantage.")
     scatter = alt.Chart(filtered_df).mark_circle(size=60).encode(
         x=alt.X(demo_col, title=f"{selected_demo} %"),
-        y=alt.Y("Partisan Margin:Q"),
+        y=alt.Y("Partisan Margin:Q", format = ".2f"),
         color=color,
         tooltip=["CD_Num", "State", alt.Tooltip(demo_col, format=".2f"), alt.Tooltip("Partisan Margin:Q", format=".2f")]
     )
     rule = alt.Chart(pd.DataFrame({'x': [50]})).mark_rule(strokeDash=[2, 2], color='red').encode(x='x:Q')
     st.altair_chart(scatter + rule, use_container_width=True)
 
+with st.expander("📋 View Vote % Table"):
+    st.dataframe(vote_grouped[["State", "Democratic %", "Republican %", "Other %"]].round(1))
+
 # -- Summary Table --
 st.markdown("### Summary Statistics")
 summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index().round(2)
-st.dataframe(summary_df)
-
-#test again
+st.dataframe(summary_df) 
