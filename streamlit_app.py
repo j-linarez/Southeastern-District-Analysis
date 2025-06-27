@@ -178,3 +178,5 @@ with col2:
 st.markdown("### Summary Statistics")
 summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index().round(2)
 st.dataframe(summary_df)
+
+#test again
