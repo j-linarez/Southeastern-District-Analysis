@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import random
 
-# Set the page to a wide layout for better visualization later on
+# Set the page to a wide layout for better visualization
 @st.cache_data
 def load_data():
     df = pd.read_csv("https://raw.githubusercontent.com/j-linarez/DataVizProject/refs/heads/main/Southeast%20Region%20Congressional%20Districts.csv")
