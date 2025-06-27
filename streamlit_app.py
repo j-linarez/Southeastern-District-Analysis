@@ -144,8 +144,7 @@ with col1:
     st.caption("A boxplot with overlaid points showing vote margins by congressional district.")
     
     
-    box = alt.Chart(filtered_df).mark_boxplot(
-    extent="min-max",
+    box = alt.Chart(filtered_df).mark_boxplot(extent="min-max",
     size=30,
     color="lightgray"
     ).encode(
