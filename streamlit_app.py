@@ -68,37 +68,63 @@ st.title("Southeast U.S. Congressional Voting & Demographics Dashboard")
 # Introduction
 st.markdown("### Introduction")
 st.write("This dashboard provides an interactive exploration of the relationship between partisan voting margins and minority demographics in congressional districts across the Southeastern United States. As a user, you are free to explore what the dashboard offers. " \
-"If you are confused with terminology, descriptions have been placed for your convience. The partisan voting margin is determined by a left - right scale where negative values indicate a Democratic lead and positive values are a Republican lead")
-
-with st.expander("\U0001F4D6 Key Terms"):
+"If you are confused with terminology, descriptions have been placed for your convience. The partisan voting margin is determined by a left - right scale where negative values indicate a Democratic lead and positive values are a Republican lead.")
+with st.expander("### **⬇️Key Terms Explained⬇️**"):
     st.markdown("""
-    - **Partisan Margin**: Difference between Republican and Democratic % (Rep% - Dem%). A positive value indicates Republican lead; a negative value indicates Democratic lead.
+    - **Partisan Margin**: Difference between Republican 🐘 and Democratic 🫏 % (Rep% - Dem%). A positive value indicates Republican lead; a negative value indicates Democratic lead.
     - **Minority %**: Total non-white population as a percentage of district population.
     - **Boxplot**: Visual summary of the spread and skewness of a dataset.
+    - **Vote Share**: Percentage of votes 🗳️ received by each party in a district.
+    - **Matrix**: A grid that compares variables in terms of similarity or connection.
     """)
 
-colA, colB, colC = st.columns(3)
-with colA:
-    state_group = st.selectbox("State Group", list(state_groups.keys()))
-    selected_states = (
-        sorted(df["State"].unique()) if state_group == "All States"
-        else state_groups[state_group]
-    )
-    selected_states = st.multiselect(
+# --- Sidebar Filters ---
+st.sidebar.header("📊 Filters")
+
+# Define default values
+default_state_group = "All States"
+default_states = sorted(df["State"].unique())
+default_group = "All"
+default_demo = "Total Minority"
+
+# Reset Button
+if st.sidebar.button("🔄 Reset Filters"):
+    st.session_state["state_group"] = default_state_group
+    st.session_state["selected_states"] = default_states
+    st.session_state["selected_group"] = default_group
+    st.session_state["selected_demo"] = default_demo
+
+# Handle filter selections using session state
+state_group = st.sidebar.selectbox("State Group", list(state_groups.keys()), key="state_group")
+
+if state_group == "All States":
+    selected_states = st.sidebar.multiselect(
         "States (customizable)", sorted(df["State"].unique()),
-        default=selected_states
+        default=sorted(df["State"].unique()),
+        key="selected_states"
+    )
+else:
+    default = state_groups[state_group]
+    selected_states = st.sidebar.multiselect(
+        "States (customizable)", sorted(df["State"].unique()),
+        key="selected_states"
     )
 
-with colB:
-    selected_group = st.selectbox("Minority % Group", ["All", "Below 35%", "35–50%", "50–75%", "75%+"])
+selected_group = st.sidebar.selectbox(
+    "Minority % Group", ["All", "Below 35%", "35–50%", "50–75%", "75%+"],
+    key="selected_group"
+)
 
-with colC:
-    selected_demo = st.selectbox("Demographic Focus", ["Total Minority", "Hispanic", "Black", "Asian", "Native", "Pacific"])
+selected_demo = st.sidebar.selectbox(
+    "Demographic Focus", ["Total Minority", "Hispanic", "Black", "Asian", "Native", "Pacific"],
+    key="selected_demo"
+)
+
 
 # -- Contextual Narratives --
 st.markdown("### Context")
 st.info(f"**State Group:** {evaluation_contexts[state_group]}")
-st.caption(f"**Demographic Focus:** {demo_contexts[selected_demo]}")
+st.info(f"**Demographic Focus:** {demo_contexts[selected_demo]}")
 
 # -- Filter Data --
 filtered_df = df[df["State"].isin(selected_states)]
@@ -151,8 +177,8 @@ else:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### Partisan Margin by State")
-        st.caption("A boxplot with overlaid points showing vote margins by congressional district.")
+        st.markdown("#### 🫏 Partisan Margin by State 🐘")
+        st.caption("A boxplot with overlaid points showing vote margins by congressional district. Observe unusal clusters or outliers between states")
         
         box = alt.Chart(filtered_df).mark_boxplot(
             extent="min-max",
@@ -175,7 +201,8 @@ else:
 
         st.altair_chart(box + points, use_container_width=True)
 
-        st.markdown("### Vote Share Breakdown by Party")
+        st.markdown("### 🗳️ Vote Share Breakdown by Party 🗳️")
+        st.caption("Bar charts that show the percentage voting for the Democratic and Republican parties by selected states.")
 
         # Use same vote_grouped data (reuse or regenerate if needed)
         vote_df = df[df["State"].isin(selected_states)].copy()
@@ -215,8 +242,8 @@ else:
 
 
     with col2:
-        st.markdown("#### Minority Share vs. Partisan Margin")
-        st.caption("Explores how minority presence relates to party advantage.")
+        st.markdown("#### 🧑 Minority Share vs. Partisan Margin 🟦🟥")
+        st.caption("Explores how minority presence relates to party advantage. The 🟥 refers to the percentage a district is classified as voting-rights compliant (VRA district). ")
 
         scatter = alt.Chart(filtered_df).mark_circle(size=60).encode(
             x=alt.X(demo_col, title=f"{selected_demo} %"),
@@ -235,8 +262,8 @@ else:
 
         st.altair_chart(scatter + rule, use_container_width=True)
 
-        st.markdown("### 🔍 Demographics & Voting Correlation Matrix")
-        st.caption("This heatmap shows the Pearson correlation between racial/ethnic group proportions and voting patterns across districts.")
+        st.markdown("### 🔍 Demographics & Voting Correlation Matrix 🔍")
+        st.caption("This heatmap shows the correlation between racial/ethnic group proportions and voting patterns across districts. A positive correlation suggests a strong correlation for the Democratic party.")
 
         # Select columns for correlation
         corr_cols = [
@@ -282,23 +309,28 @@ else:
         st.altair_chart(heatmap + text, use_container_width=True)
 
 
-    st.markdown("### Summary Statistics")
+    st.markdown("### 📈 Summary Statistics 📈")
     summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index().round(2)
     st.dataframe(summary_df)
 
 # --- Key Insights / Takeaways Section ---
-st.markdown("### 📌 Key Insights")
+st.markdown("### 📌 Key Insights 📌")
 st.info(
     """
     **1. Minority populations often correlate with more Democratic-leaning districts**, especially where the Black population is a major demographic. 
     States like **Georgia and North Carolina** show this more clearly in competitive areas.
 
-    **2. Conservative states still contain diverse districts** with high minority populations — however, many of these districts still show strong Republican margins, indicating potential effects of district design or turnout.
+    **2. Conservative states still have  minority-majority districts**. However, many districts below 50% minority population vote heavily for the Republican party.
 
-    **3. States with Independent Commissions (like Virginia)** tend to show slightly more balanced or moderate voting patterns, compared to those with partisan-controlled redistricting.
+    **3. States with Independent Commissions (like Virginia)** show more balanced partisan voting, compared to those with partisan-controlled redistricting.
 
     **4. There is significant variation within states**, so state-level averages may obscure important district-level dynamics.
+    
+    **5. Despite having a high minority population,** many potential voting rights compliant districts have not been created. This is in spite of a significant minority population.
 
-    There's plenty of more insights waiting to be found!
+    **6. The correlation between minorities voting for the Democratic party is strong**. Nearly all major minority demographics somewhat / strong directly correlate to voting for the Democratic party.
+    
+    
+    There's plenty of more insights waiting to be found! If you're interested in concerns over partisan / minority representation, visit fairvote.org for more details! 
     """
 )
