@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import random
+import numpy
 
 # Set the page to a wide layout for better visualization
 @st.cache_data
