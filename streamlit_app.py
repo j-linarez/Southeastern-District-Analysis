@@ -299,6 +299,6 @@ st.info(
 
     **4. There is significant variation within states**, so state-level averages may obscure important district-level dynamics.
 
-    Use the filters above to explore these patterns and generate your own insights!
+    There's plenty of more insights waiting to be found!
     """
 )
