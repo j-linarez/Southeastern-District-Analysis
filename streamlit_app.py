@@ -39,8 +39,6 @@ state_groups = {
     ]
 }
 
-# Unsure how this could work but lets hope it does
-# Evaluation group explanations
 evaluation_contexts = {
     "All States": """This includes all congressional districts in the Southeastern U.S. This is the default view of all the charts provided""",
     "Independent Commission": """These states (Louisiana, Virginia) use independent or court ordered commissions for redistricting. They are intended to reduce political intervention.""",
@@ -49,7 +47,6 @@ evaluation_contexts = {
     "Conservative States": """These states consistently vote Republican. They often do not vote for the Democratic party. Despite this, a sizable amount of minority voters often live in these states."""
 }
 
-# Demographic focus descriptions
 demo_contexts = {
     "Total Minority": "This combines all non-white racial/ethnic groups. It accounts all groups of ethnic groups.",
     "Black": "The Black population plays a significant role in many Southern states' Democratic voting base. They are commonly found in rural / urban areas impacted by the history of racial segeration.",
@@ -64,12 +61,9 @@ df = load_data()
 st.set_page_config(layout="wide")
 st.title("Southeast U.S. Congressional Voting & Demographics Dashboard")
 
-
-
 # Introduction
 st.markdown("### Introduction")
-st.write("This dashboard provides an interactive exploration of the relationship between partisan voting margins and minority demographics in congressional districts across the Southeastern United States. As a user, you are free to explore what the dashboard offers. " \
-"If you are confused with terminology, descriptions have been placed for your convience. The partisan voting margin is determined by a left - right scale where negative values indicate a Democratic lead and positive values are a Republican lead.")
+st.write("This dashboard provides an interactive exploration of the relationship between partisan voting margins and minority demographics in congressional districts across the Southeastern United States. If you are confused with terminology, descriptions have been placed for your convenience. The partisan voting margin is determined by a left - right scale where negative values indicate a Democratic lead and positive values are a Republican lead.")
 with st.expander("### **⬇️Key Terms Explained⬇️**"):
     st.markdown("""
     - **Partisan Margin**: Difference between Republican 🐘 and Democratic 🫏 % (Rep% - Dem%). A positive value indicates Republican lead; a negative value indicates Democratic lead.
@@ -79,31 +73,33 @@ with st.expander("### **⬇️Key Terms Explained⬇️**"):
     - **Matrix**: A grid that compares variables in terms of similarity or connection.
     """)
 
-# --- Sidebar Filters ---
+# Sidebar Filters
 st.sidebar.header("📊 Filters")
 
+# --- Initialize session state ---
+if "state_group" not in st.session_state:
+    st.session_state["state_group"] = "All States"
+if "selected_states" not in st.session_state:
+    st.session_state["selected_states"] = sorted(df["State"].unique())
+if "selected_group" not in st.session_state:
+    st.session_state["selected_group"] = "All"
+if "selected_demo" not in st.session_state:
+    st.session_state["selected_demo"] = "Total Minority"
+if "last_state_group" not in st.session_state:
+    st.session_state["last_state_group"] = "All States"
 
-# Define default values
-default_state_group = "All States"
-default_states = sorted(df["State"].unique())
-default_group = "All"
-default_demo = "Total Minority"
-
-# Reset Button
+# --- Reset Filters ---
 if st.sidebar.button("🔄 Reset Filters"):
-    st.session_state["state_group"] = default_state_group
-    st.session_state["selected_states"] = default_states
-    st.session_state["selected_group"] = default_group
-    st.session_state["selected_demo"] = default_demo
-    st.session_state["last_state_group"] = default_state_group  # Also reset this
+    st.session_state["state_group"] = "All States"
+    st.session_state["selected_states"] = sorted(df["State"].unique())
+    st.session_state["selected_group"] = "All"
+    st.session_state["selected_demo"] = "Total Minority"
+    st.session_state["last_state_group"] = "All States"
 
-# Main state group selection
+# --- State Group Dropdown ---
 state_group = st.sidebar.selectbox("State Group", list(state_groups.keys()), key="state_group")
 
-# Sync selected_states with state_group change
-if "last_state_group" not in st.session_state:
-    st.session_state["last_state_group"] = state_group
-
+# --- Sync selected_states when state group changes ---
 if state_group != st.session_state["last_state_group"]:
     st.session_state["selected_states"] = (
         sorted(df["State"].unique()) if state_group == "All States"
@@ -111,14 +107,14 @@ if state_group != st.session_state["last_state_group"]:
     )
     st.session_state["last_state_group"] = state_group
 
-# Now use single multiselect widget
+# --- Multiselect ---
 selected_states = st.sidebar.multiselect(
     "States (customizable)", sorted(df["State"].unique()),
     default=st.session_state["selected_states"],
     key="selected_states"
 )
 
-# Minority % group and demo focus
+# --- Other filters ---
 selected_group = st.sidebar.selectbox(
     "Minority % Group", ["All", "Below 35%", "35–50%", "50–75%", "75%+"],
     key="selected_group"
@@ -146,12 +142,7 @@ if selected_group != "All":
 
 demo_col = "Minority Percentage" if selected_demo == "Total Minority" else f"{selected_demo} %"
 
-# -- Color palette --
-
-safe_colors = [
-    "#E69F00", "#56B4E9", "#009E73", "#F0E442",
-    "#0072B2", "#D55E00", "#CC79A7", "#999999"
-]
+# -- Color Palette --
 unique_states = sorted(filtered_df["State"].unique())
 safe_12_colors = [
     "#E69F00", "#56B4E9", "#009E73", "#F0E442",
@@ -161,7 +152,7 @@ safe_12_colors = [
 palette = alt.Scale(domain=unique_states, range=safe_12_colors[:len(unique_states)])
 color = alt.Color("State:N", scale=palette)
 
-# -- Charts --
+# -- Metrics --
 st.markdown("### Key Metrics")
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -171,87 +162,62 @@ with col2:
 with col3:
     st.metric("Number of Districts", len(filtered_df))
 
-
-
+# -- Conditional Display --
 if len(filtered_df) < 5:
     st.warning(
         f"⚠️ Only {len(filtered_df)} congressional district{'s' if len(filtered_df) == 1 else 's'} found based on your current filters. "
         "You may want to broaden your selection for a more meaningful analysis."
     )
-
 else:
-
     st.markdown("### Visualizations")
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("#### 🫏 Partisan Margin by State 🐘")
-        st.caption("A boxplot with overlaid points showing vote margins by congressional district. Observe unusal clusters or outliers between states")
-        
-        box = alt.Chart(filtered_df).mark_boxplot(
-            extent="min-max",
-            size=30,
-            color="gray",
-        ).encode(
+        st.caption("A boxplot with overlaid points showing vote margins by congressional district.")
+
+        box = alt.Chart(filtered_df).mark_boxplot(extent="min-max", size=30, color="gray").encode(
             x=alt.X("State:N"),
             y=alt.Y("Partisan Margin:Q", axis=alt.Axis(format=".2f"))
         )
 
         points = alt.Chart(filtered_df).mark_circle(size=60, opacity=0.5).encode(
             x="State:N",
-            y=alt.Y("Partisan Margin:Q", axis=alt.Axis(format=".2f")),
+            y="Partisan Margin:Q",
             color=color,
-            tooltip=[
-                alt.Tooltip("CD_Num:N"),
-                alt.Tooltip("Partisan Margin:Q", format=".2f")
-            ]
+            tooltip=["CD_Num:N", alt.Tooltip("Partisan Margin:Q", format=".2f")]
         )
 
         st.altair_chart(box + points, use_container_width=True)
 
         st.markdown("### 🗳️ Vote Share Breakdown by Party 🗳️")
-        st.caption("Bar charts that show the percentage voting for the Democratic and Republican parties by selected states.")
-
-        # Use same vote_grouped data (reuse or regenerate if needed)
         vote_df = df[df["State"].isin(selected_states)].copy()
         vote_df = vote_df[vote_df["E_16-20_COMP_Total"] > 0]
         vote_grouped = vote_df.groupby("State")[["E_16-20_COMP_Dem", "E_16-20_COMP_Rep", "E_16-20_COMP_Total"]].sum().reset_index()
         vote_grouped["Democratic %"] = (vote_grouped["E_16-20_COMP_Dem"] / vote_grouped["E_16-20_COMP_Total"]) * 100
         vote_grouped["Republican %"] = (vote_grouped["E_16-20_COMP_Rep"] / vote_grouped["E_16-20_COMP_Total"]) * 100
 
-        # Democratic Vote Bar Chart
         dem_chart = alt.Chart(vote_grouped).mark_bar(color="#00AEF3").encode(
             y=alt.Y("State:N", sort=alt.EncodingSortField(field="Democratic %", order="ascending")),
             x=alt.X("Democratic %:Q", title="Democratic Vote %"),
             tooltip=["State", alt.Tooltip("Democratic %:Q", format=".1f")]
-        ).properties(
-            title="Democratic Vote Share by State",
-            width=400,
-            height=450
-        )
+        ).properties(title="Democratic Vote Share by State", width=400, height=450)
 
-        # Republican Vote Bar Chart
         rep_chart = alt.Chart(vote_grouped).mark_bar(color="#E81B23").encode(
             y=alt.Y("State:N", sort=alt.EncodingSortField(field="Republican %", order="descending")),
             x=alt.X("Republican %:Q", title="Republican Vote %"),
             tooltip=["State", alt.Tooltip("Republican %:Q", format=".1f")]
-        ).properties(
-            title="Republican Vote Share by State",
-            width=400,
-            height=450
-        )
+        ).properties(title="Republican Vote Share by State", width=400, height=450)
 
-        # Side-by-side layout
         colA, colB = st.columns(2)
         with colA:
             st.altair_chart(dem_chart, use_container_width=True)
         with colB:
             st.altair_chart(rep_chart, use_container_width=True)
 
-
     with col2:
         st.markdown("#### 🧑 Minority Share vs. Partisan Margin 🟦🟥")
-        st.caption("Explores how minority presence relates to party advantage. The 🟥 refers to the percentage a district is classified as voting-rights compliant (VRA district). ")
+        st.caption("Explores how minority presence relates to party advantage.")
 
         scatter = alt.Chart(filtered_df).mark_circle(size=60).encode(
             x=alt.X(demo_col, title=f"{selected_demo} %"),
@@ -264,45 +230,34 @@ else:
             ]
         )
 
-        rule = alt.Chart(pd.DataFrame({'x': [50]})).mark_rule(
-            strokeDash=[2, 2], color='red'
-        ).encode(x='x:Q')
-
+        rule = alt.Chart(pd.DataFrame({'x': [50]})).mark_rule(strokeDash=[2, 2], color='red').encode(x='x:Q')
         st.altair_chart(scatter + rule, use_container_width=True)
 
         st.markdown("### 🔍 Demographics & Voting Correlation Matrix 🔍")
-        st.caption("This heatmap shows the correlation between racial/ethnic group proportions and voting patterns across districts. A positive correlation suggests a strong correlation for the Democratic party.")
+        st.caption("This heatmap shows the correlation between racial/ethnic group proportions and voting patterns across districts.")
 
-        # Select columns for correlation
         corr_cols = [
             "Minority Percentage", "Black %", "Hispanic %", "Asian %", "Native %", "Pacific %",
             "Democratic %", "Republican %", "Partisan Margin"
         ]
-
-        # Compute correlation matrix
         corr_df = (
             filtered_df[corr_cols]
             .corr()
-            .loc[["Minority Percentage", "Black %", "Hispanic %", "Asian %", "Native %", "Pacific %"],  # rows
-                ["Democratic %", "Republican %", "Partisan Margin"]]  # cols
+            .loc[["Minority Percentage", "Black %", "Hispanic %", "Asian %", "Native %", "Pacific %"],
+                 ["Democratic %", "Republican %", "Partisan Margin"]]
             .round(2)
             .reset_index()
             .melt(id_vars="index", var_name="Vote Metric", value_name="Correlation")
             .rename(columns={"index": "Demographic"})
         )
 
-        # Heatmap chart
         heatmap = alt.Chart(corr_df).mark_rect().encode(
             x=alt.X("Vote Metric:N", title="Voting Variable"),
             y=alt.Y("Demographic:N", title="Demographic Group"),
             color=alt.Color("Correlation:Q", scale=alt.Scale(scheme="redblue", domain=(-1, 1))),
-            tooltip=[
-                "Demographic", "Vote Metric",
-                alt.Tooltip("Correlation:Q", format=".2f")
-            ]
+            tooltip=["Demographic", "Vote Metric", alt.Tooltip("Correlation:Q", format=".2f")]
         ).properties(width=500, height=400)
 
-        # Add numeric annotations
         text = alt.Chart(corr_df).mark_text(baseline="middle").encode(
             x="Vote Metric:N",
             y="Demographic:N",
@@ -316,29 +271,20 @@ else:
 
         st.altair_chart(heatmap + text, use_container_width=True)
 
-
     st.markdown("### 📈 Summary Statistics 📈")
     summary_df = filtered_df.groupby("State")[["Partisan Margin", "Minority Percentage"]].mean().reset_index().round(2)
     st.dataframe(summary_df)
 
-# --- Key Insights / Takeaways Section ---
+# --- Key Insights ---
 st.markdown("### 📌 Key Insights 📌")
 st.info(
     """
-    **1. Minority populations often correlate with more Democratic-leaning districts**, especially where the Black population is a major demographic. 
-    States like **Georgia and North Carolina** show this more clearly in competitive areas.
-
-    **2. Conservative states still have  minority-majority districts**. However, many districts below 50% minority population vote heavily for the Republican party.
-
-    **3. States with Independent Commissions (like Virginia)** show more balanced partisan voting, compared to those with partisan-controlled redistricting.
-
-    **4. There is significant variation within states**, so state-level averages may obscure important district-level dynamics.
-    
-    **5. Despite having a high minority population,** many potential voting rights compliant districts have not been created. This is in spite of a significant minority population.
-
-    **6. The correlation between minorities voting for the Democratic party is strong**. Nearly all major minority demographics somewhat / strong directly correlate to voting for the Democratic party.
-    
-    
-    There's plenty of more insights waiting to be found! If you're interested in concerns over partisan / minority representation, visit fairvote.org for more details! 
+    **1. Minority populations often correlate with more Democratic-leaning districts**, especially where the Black population is a major demographic.  
+    **2. Conservative states still have minority-majority districts**, but many below 50% minority still vote Republican.  
+    **3. Independent Commission states show more balanced partisan voting.**  
+    **4. There is significant within-state variation**, which may be hidden by averages.  
+    **5. Many potential Voting Rights Act (VRA) compliant districts may not have been drawn.**  
+    **6. Correlation between minorities and Democratic votes is strong across nearly all minority groups.  
+    Visit [fairvote.org](https://fairvote.org) for more information on redistricting and representation.
     """
 )
