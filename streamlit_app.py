@@ -82,6 +82,7 @@ with st.expander("### **⬇️Key Terms Explained⬇️**"):
 # --- Sidebar Filters ---
 st.sidebar.header("📊 Filters")
 
+
 # Define default values
 default_state_group = "All States"
 default_states = sorted(df["State"].unique())
@@ -94,23 +95,30 @@ if st.sidebar.button("🔄 Reset Filters"):
     st.session_state["selected_states"] = default_states
     st.session_state["selected_group"] = default_group
     st.session_state["selected_demo"] = default_demo
+    st.session_state["last_state_group"] = default_state_group  # Also reset this
 
-# Handle filter selections using session state
+# Main state group selection
 state_group = st.sidebar.selectbox("State Group", list(state_groups.keys()), key="state_group")
 
-if state_group == "All States":
-    selected_states = st.sidebar.multiselect(
-        "States (customizable)", sorted(df["State"].unique()),
-        default=sorted(df["State"].unique()),
-        key="selected_states"
-    )
-else:
-    default = state_groups[state_group]
-    selected_states = st.sidebar.multiselect(
-        "States (customizable)", sorted(df["State"].unique()),
-        key="selected_states"
-    )
+# Sync selected_states with state_group change
+if "last_state_group" not in st.session_state:
+    st.session_state["last_state_group"] = state_group
 
+if state_group != st.session_state["last_state_group"]:
+    st.session_state["selected_states"] = (
+        sorted(df["State"].unique()) if state_group == "All States"
+        else state_groups[state_group]
+    )
+    st.session_state["last_state_group"] = state_group
+
+# Now use single multiselect widget
+selected_states = st.sidebar.multiselect(
+    "States (customizable)", sorted(df["State"].unique()),
+    default=st.session_state["selected_states"],
+    key="selected_states"
+)
+
+# Minority % group and demo focus
 selected_group = st.sidebar.selectbox(
     "Minority % Group", ["All", "Below 35%", "35–50%", "50–75%", "75%+"],
     key="selected_group"
@@ -120,7 +128,6 @@ selected_demo = st.sidebar.selectbox(
     "Demographic Focus", ["Total Minority", "Hispanic", "Black", "Asian", "Native", "Pacific"],
     key="selected_demo"
 )
-
 
 # -- Contextual Narratives --
 st.markdown("### Context")
